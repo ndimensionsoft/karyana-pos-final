@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karyana POS — Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f0ee;font-size:13px;color:#1a1a1a}
+.topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#1a1a1a;color:#fff}
+.topbar h1{font-size:14px;font-weight:600}
+.topbar .lbl{font-size:12px;color:#aaa;margin-left:auto}
+.main{padding:16px;max-width:1100px;margin:0 auto}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.stat{background:#fff;border-radius:10px;padding:12px;border:1px solid #e5e5e5}
+.stat .l{font-size:11px;color:#888;margin-bottom:3px}
+.stat .v{font-size:20px;font-weight:600}
+.card{background:#fff;border-radius:10px;border:1px solid #e5e5e5;margin-bottom:14px;overflow:hidden}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #e5e5e5}
+.card-hdr h3{font-size:13px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px 12px;font-weight:500;color:#888;border-bottom:1px solid #e5e5e5;font-size:11px;white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+.badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:500}
+.badge.trial  {background:#dbeafe;color:#1d4ed8}
+.badge.active {background:#dcfce7;color:#16a34a}
+.badge.grace  {background:#fef3c7;color:#d97706}
+.badge.suspended{background:#fee2e2;color:#dc2626}
+.btn{padding:5px 10px;border-radius:7px;border:1px solid #e5e5e5;background:none;cursor:pointer;font-size:11px;font-weight:500}
+.btn.primary{background:#1a73e8;color:#fff;border-color:transparent}
+.btn.green{background:#16a34a;color:#fff;border-color:transparent}
+.btn.red{background:#dc2626;color:#fff;border-color:transparent}
+input,select{padding:6px 10px;border:1px solid #e0e0e0;border-radius:7px;font-size:12px;outline:none}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:14px;padding:20px;width:380px;max-width:95%}
+.modal h3{font-size:14px;font-weight:600;margin-bottom:14px}
+.form-row{margin-bottom:10px}
+.form-row label{display:block;font-size:11px;color:#666;margin-bottom:3px}
+.form-row input,.form-row select{width:100%}
+.modal-btns{display:flex;gap:8px;margin-top:14px}
+.modal-btns .btn{flex:1;padding:8px;text-align:center}
+.login-card{background:#fff;border-radius:14px;padding:28px;width:340px;box-shadow:0 4px 20px rgba(0,0,0,.1)}
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center}
+.empty{text-align:center;padding:30px;color:#aaa;font-size:12px}
+.refresh-btn{padding:5px 12px;border:1px solid #e5e5e5;border-radius:7px;background:none;cursor:pointer;font-size:12px;margin-left:8px}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <h2 style="font-size:17px;font-weight:700;margin-bottom:4px">🛒 Karyana POS</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:18px">Admin dashboard</p>
+    <label style="font-size:11px;color:#666;display:block;margin-bottom:3px">Admin phone</label>
+    <input id="adm-phone" type="tel" placeholder="0300-1234567" style="width:100%;margin-bottom:8px">
+    <label style="font-size:11px;color:#666;display:block;margin-bottom:3px">Password</label>
+    <input id="adm-pass" type="password" placeholder="Password" style="width:100%;margin-bottom:12px">
+    <div id="adm-err" style="color:#dc2626;font-size:12px;margin-bottom:8px;display:none"></div>
+    <button class="btn primary" style="width:100%;padding:10px" onclick="adminLogin()">Login</button>
+  </div>
+</div>
+
+<div id="admin-screen" style="display:none">
+  <div class="topbar">
+    <h1>🛒 Karyana POS — Admin</h1>
+    <span class="lbl" id="adm-lbl"></span>
+    <button class="btn" style="border-color:#555;color:#ccc" onclick="adminLogout()">Logout</button>
+  </div>
+  <div class="main">
+
+    <!-- Stats -->
+    <div class="stat-row" id="stats-row">
+      <div class="stat"><div class="l">Total stores</div><div class="v" id="st-total">—</div></div>
+      <div class="stat"><div class="l">Active / Trial</div><div class="v" id="st-active">—</div></div>
+      <div class="stat"><div class="l">Suspended</div><div class="v" id="st-suspended">—</div></div>
+      <div class="stat"><div class="l">Revenue this month</div><div class="v" id="st-revenue">—</div></div>
+    </div>
+
+    <!-- Stores table -->
+    <div class="card">
+      <div class="card-hdr">
+        <h3>All stores</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="search-stores" placeholder="Search store name…" oninput="filterStores()" style="width:180px">
+          <select id="filter-status" onchange="filterStores()">
+            <option value="">All statuses</option>
+            <option value="trial">Trial</option>
+            <option value="active">Active</option>
+            <option value="grace">Grace</option>
+            <option value="suspended">Suspended</option>
+          </select>
+          <button class="refresh-btn" onclick="loadStores()">↻ Refresh</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Store name</th><th>Phone</th><th>Area</th><th>Joined</th>
+            <th>Plan</th><th>Status</th><th>Trial ends</th><th>Paid until</th>
+            <th>Sales</th><th>Products</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="stores-tbody"></tbody>
+        </table>
+        <div class="empty" id="stores-empty" style="display:none">No stores found</div>
+      </div>
+    </div>
+
+    <!-- Recent payments -->
+    <div class="card">
+      <div class="card-hdr">
+        <h3>Payment history</h3>
+        <button class="btn primary" onclick="openRecordPayment()">+ Record payment</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Store</th><th>Amount</th><th>Method</th><th>Months</th><th>Plan</th><th>Reference</th><th>Date</th><th>By</th></tr></thead>
+          <tbody id="payments-tbody"></tbody>
+        </table>
+        <div class="empty" id="payments-empty" style="display:none">No payments recorded yet</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: Update subscription -->
+<div class="modal-bg" id="modal-sub">
+  <div class="modal">
+    <h3>Update subscription — <span id="modal-store-name"></span></h3>
+    <input type="hidden" id="modal-store-id">
+    <div class="form-row"><label>Status</label>
+      <select id="sub-status">
+        <option value="trial">Trial</option>
+        <option value="active">Active</option>
+        <option value="grace">Grace period</option>
+        <option value="suspended">Suspended</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Plan</label>
+      <select id="sub-plan"><option value="trial">Trial</option><option value="basic">Basic</option><option value="pro">Pro</option></select>
+    </div>
+    <div class="form-row"><label>Paid until (date)</label><input type="date" id="sub-paid-until"></div>
+    <div class="form-row"><label>Trial ends (date)</label><input type="date" id="sub-trial-ends"></div>
+    <div class="form-row"><label>Notes</label><input id="sub-notes" placeholder="e.g. Paid via Easypaisa, ref #1234"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-sub')">Cancel</button>
+      <button class="btn green" onclick="saveSubscription()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Record payment -->
+<div class="modal-bg" id="modal-payment">
+  <div class="modal">
+    <h3>Record payment</h3>
+    <div class="form-row"><label>Store</label>
+      <select id="pay-store-sel" style="width:100%"></select>
+    </div>
+    <div class="form-row"><label>Amount (Rs)</label><input type="number" id="pay-amount" placeholder="500"></div>
+    <div class="form-row"><label>Months paid</label>
+      <select id="pay-months"><option value="1">1 month</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select>
+    </div>
+    <div class="form-row"><label>Plan</label>
+      <select id="pay-plan"><option value="basic">Basic (Rs 500/mo)</option><option value="pro">Pro (Rs 1,000/mo)</option></select>
+    </div>
+    <div class="form-row"><label>Method</label>
+      <select id="pay-method"><option value="easypaisa">Easypaisa</option><option value="jazzcash">JazzCash</option><option value="bank">Bank transfer</option></select>
+    </div>
+    <div class="form-row"><label>Transaction reference</label><input id="pay-ref" placeholder="e.g. EP-1234567"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal('modal-payment')">Cancel</button>
+      <button class="btn green" onclick="savePayment()">Save &amp; activate</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+let _client = null;
+let _stores  = [];
+let _admPhone = '';
+
+function adminLogin() {
+  const phone = document.getElementById('adm-phone').value.trim();
+  const pass  = document.getElementById('adm-pass').value;
+  initSupabase();
+  if (!window.SupabaseClient) { showAdmErr('Supabase not configured in config.js'); return; }
+  _client = window.SupabaseClient;
+  /* Authenticate against Supabase */
+  _client.auth.signInWithPassword({ phone: norm(phone), password: pass }).then(({ data, error }) => {
+    if (error) { showAdmErr('Wrong credentials'); return; }
+    /* Check if admin */
+    const normPhone = norm(phone);
+    const admins = window.CONFIG?.adminPhones || [];
+    if (!admins.includes(normPhone)) { showAdmErr('Not an admin account'); _client.auth.signOut(); return; }
+    _admPhone = normPhone;
+    document.getElementById('login-screen').style.display  = 'none';
+    document.getElementById('admin-screen').style.display  = 'block';
+    document.getElementById('adm-lbl').textContent = 'Logged in as ' + phone;
+    loadStores(); loadPayments();
+  });
+}
+
+function adminLogout() { _client?.auth.signOut(); location.reload(); }
+function showAdmErr(m) { const e=document.getElementById('adm-err'); e.textContent=m; e.style.display='block'; }
+
+async function loadStores() {
+  const { data, error } = await _client.from('stores').select(`
+    storeId, storeName, phone, area, createdAt,
+    subscriptions ( plan, status, trialEnds, paidUntil )
+  `).order('createdAt', { ascending: false });
+  if (error) { console.error(error); return; }
+  /* Also get sales + product counts */
+  _stores = data || [];
+  renderStores(_stores);
+  renderStats(_stores);
+}
+
+async function loadPayments() {
+  const { data } = await _client.from('payments').select('*').order('createdAt', { ascending: false }).limit(50);
+  const payments = data || [];
+  const tbody = document.getElementById('payments-tbody');
+  document.getElementById('payments-empty').style.display = payments.length ? 'none' : 'block';
+  tbody.innerHTML = payments.map(p => {
+    const store = _stores.find(s => s.storeId === p.storeId);
+    return `<tr>
+      <td style="font-weight:500">${store?.storeName || p.storeId}</td>
+      <td>Rs ${(p.amount||0).toLocaleString('en-PK')}</td>
+      <td>${p.method || '—'}</td>
+      <td>${p.months || 1}</td>
+      <td>${p.plan || '—'}</td>
+      <td style="font-family:monospace">${p.reference || '—'}</td>
+      <td>${(p.createdAt||'').slice(0,10)}</td>
+      <td>${p.recordedBy || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderStats(stores) {
+  const subs = stores.map(s => s.subscriptions?.[0] || {});
+  document.getElementById('st-total').textContent     = stores.length;
+  document.getElementById('st-active').textContent    = subs.filter(s => ['active','trial'].includes(s.status)).length;
+  document.getElementById('st-suspended').textContent = subs.filter(s => s.status === 'suspended').length;
+  document.getElementById('st-revenue').textContent   = 'Rs —';
+}
+
+function renderStores(stores) {
+  const tbody = document.getElementById('stores-tbody');
+  document.getElementById('stores-empty').style.display = stores.length ? 'none' : 'block';
+  tbody.innerHTML = stores.map(s => {
+    const sub = s.subscriptions?.[0] || {};
+    const sc  = sub.status || 'trial';
+    return `<tr>
+      <td style="font-weight:500">${s.storeName}</td>
+      <td>${s.phone || '—'}</td>
+      <td>${s.area || '—'}</td>
+      <td>${(s.createdAt||'').slice(0,10)}</td>
+      <td><span class="badge trial">${sub.plan || 'trial'}</span></td>
+      <td><span class="badge ${sc}">${sc}</span></td>
+      <td>${sub.trialEnds || '—'}</td>
+      <td>${sub.paidUntil || '—'}</td>
+      <td>—</td><td>—</td>
+      <td style="display:flex;gap:5px">
+        <button class="btn primary" onclick="openSubModal('${s.storeId}','${s.storeName.replace(/'/g,"\\'")}')">Manage</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterStores() {
+  const q      = document.getElementById('search-stores').value.toLowerCase();
+  const status = document.getElementById('filter-status').value;
+  renderStores(_stores.filter(s => {
+    const matchQ  = !q || s.storeName.toLowerCase().includes(q) || (s.phone||'').includes(q);
+    const matchSt = !status || (s.subscriptions?.[0]?.status || 'trial') === status;
+    return matchQ && matchSt;
+  }));
+}
+
+function openSubModal(storeId, storeName) {
+  const store = _stores.find(s => s.storeId === storeId);
+  const sub   = store?.subscriptions?.[0] || {};
+  document.getElementById('modal-store-id').value   = storeId;
+  document.getElementById('modal-store-name').textContent = storeName;
+  document.getElementById('sub-status').value       = sub.status    || 'trial';
+  document.getElementById('sub-plan').value         = sub.plan      || 'trial';
+  document.getElementById('sub-paid-until').value   = sub.paidUntil || '';
+  document.getElementById('sub-trial-ends').value   = sub.trialEnds || '';
+  document.getElementById('sub-notes').value        = '';
+  document.getElementById('modal-sub').classList.add('open');
+}
+
+async function saveSubscription() {
+  const storeId   = document.getElementById('modal-store-id').value;
+  const status    = document.getElementById('sub-status').value;
+  const plan      = document.getElementById('sub-plan').value;
+  const paidUntil = document.getElementById('sub-paid-until').value || null;
+  const trialEnds = document.getElementById('sub-trial-ends').value || null;
+  const { error } = await _client.from('subscriptions').upsert({
+    storeId, status, plan, paidUntil, trialEnds, updatedAt: new Date().toISOString(),
+  }, { onConflict: 'storeId' });
+  if (error) { alert('Error: ' + error.message); return; }
+  closeModal('modal-sub'); loadStores();
+}
+
+function openRecordPayment() {
+  document.getElementById('pay-store-sel').innerHTML =
+    _stores.map(s => `<option value="${s.storeId}">${s.storeName} (${s.phone})</option>`).join('');
+  document.getElementById('modal-payment').classList.add('open');
+}
+
+async function savePayment() {
+  const storeId = document.getElementById('pay-store-sel').value;
+  const amount  = parseFloat(document.getElementById('pay-amount').value) || 0;
+  const months  = parseInt(document.getElementById('pay-months').value)   || 1;
+  const plan    = document.getElementById('pay-plan').value;
+  const method  = document.getElementById('pay-method').value;
+  const ref     = document.getElementById('pay-ref').value.trim();
+  if (!storeId || !amount) { alert('Select store and enter amount'); return; }
+  /* Calculate new paidUntil */
+  const now      = new Date();
+  const paidUntil = new Date(now.getFullYear(), now.getMonth() + months, now.getDate()).toISOString().split('T')[0];
+  /* Record payment */
+  await _client.from('payments').insert({
+    storeId, amount, months, plan, method, reference: ref,
+    recordedBy: _admPhone, createdAt: new Date().toISOString(),
+  });
+  /* Activate subscription */
+  await _client.from('subscriptions').upsert({
+    storeId, status: 'active', plan, paidUntil, updatedAt: new Date().toISOString(),
+  }, { onConflict: 'storeId' });
+  closeModal('modal-payment'); loadStores(); loadPayments();
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function norm(p) {
+  p = p.replace(/[\s\-()+]/g,'');
+  if (p.startsWith('0')) p = '+92' + p.slice(1);
+  else if (!p.startsWith('+')) p = '+92' + p;
+  return p;
+}
+</script>
+</body>
+</html>

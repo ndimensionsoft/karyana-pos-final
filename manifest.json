@@ -1,0 +1,22 @@
+{
+  "name": "Karyana POS",
+  "short_name": "Karyana POS",
+  "description": "Point of Sale system for Pakistani karyana stores",
+  "start_url": "/login.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#1a73e8",
+  "lang": "ur",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [],
+  "categories": ["business", "finance"],
+  "shortcuts": [
+    { "name": "New Sale", "url": "/?screen=pos", "description": "Start a new sale" },
+    { "name": "Inventory", "url": "/?screen=inv", "description": "View inventory" },
+    { "name": "Udhar", "url": "/?screen=udhar", "description": "Customer credit" }
+  ]
+}

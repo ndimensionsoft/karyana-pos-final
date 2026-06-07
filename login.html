@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#1a73e8">
+<title>Karyana POS — Login</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dexie@3/dist/dexie.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f0ee;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:#fff;border-radius:16px;padding:28px 24px;width:100%;max-width:380px;box-shadow:0 2px 20px rgba(0,0,0,.08)}
+.logo{text-align:center;margin-bottom:20px}
+.logo h1{font-size:22px;font-weight:700;color:#1a73e8;margin-bottom:2px}
+.logo p{font-size:13px;color:#888;font-family:'Noto Nastaliq Urdu',serif;direction:rtl}
+.tabs{display:flex;gap:4px;background:#f0f0ee;border-radius:10px;padding:3px;margin-bottom:20px}
+.tab{flex:1;padding:7px;border:none;background:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:400;color:#666}
+.tab.active{background:#fff;font-weight:500;color:#1a1a1a;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+label{display:block;font-size:11px;color:#666;margin-bottom:3px;margin-top:10px}
+input,select{width:100%;padding:10px 12px;border:1px solid #e0e0e0;border-radius:9px;font-size:14px;outline:none;color:#1a1a1a;background:#fafafa}
+input:focus,select:focus{border-color:#1a73e8;background:#fff}
+.btn{width:100%;padding:12px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:16px;letter-spacing:.02em}
+.btn-primary{background:#1a73e8;color:#fff}
+.btn-primary:active{opacity:.88}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.err{background:#fee2e2;color:#dc2626;padding:10px 12px;border-radius:8px;font-size:12px;margin-top:10px;display:none}
+.trial-badge{background:#dcfce7;color:#16a34a;border-radius:10px;padding:10px 14px;font-size:12px;text-align:center;margin-bottom:16px;line-height:1.5}
+.trial-badge strong{display:block;font-size:14px;margin-bottom:2px}
+.plans{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.plan{border:1.5px solid #e0e0e0;border-radius:10px;padding:10px;cursor:pointer;transition:all .15s}
+.plan.sel{border-color:#1a73e8;background:#e8f0fe}
+.plan h4{font-size:13px;font-weight:600;margin-bottom:3px}
+.plan .price{font-size:18px;font-weight:700;color:#1a73e8}
+.plan .price span{font-size:11px;color:#888;font-weight:400}
+.plan ul{list-style:none;margin-top:6px}
+.plan ul li{font-size:11px;color:#555;padding:1px 0}
+.plan ul li::before{content:"✓ ";color:#16a34a;font-weight:600}
+.pay-methods{margin-top:12px}
+.pay-method{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e0e0e0;border-radius:9px;margin-bottom:7px;cursor:pointer}
+.pay-method.sel{border-color:#1a73e8;background:#e8f0fe}
+.pay-method .icon{font-size:22px;flex-shrink:0}
+.pay-method .info .name{font-size:13px;font-weight:500}
+.pay-method .info .num{font-size:12px;color:#666;font-family:monospace}
+.copy-btn{margin-left:auto;padding:4px 10px;border:1px solid #e0e0e0;border-radius:6px;background:none;font-size:11px;cursor:pointer}
+.copy-btn:active{background:#e0e0e0}
+.link{color:#1a73e8;text-decoration:none;font-size:12px;cursor:pointer}
+.divider{text-align:center;color:#aaa;font-size:12px;margin:14px 0;display:flex;align-items:center;gap:8px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#e0e0e0}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h1>🛒 Karyana POS</h1>
+    <p>آپکی دکان، آپکا حق</p>
+  </div>
+
+  <!-- ── AUTH TABS ── -->
+  <div id="auth-section">
+    <div class="tabs">
+      <button class="tab active" onclick="showAuthTab('login')">Login</button>
+      <button class="tab" onclick="showAuthTab('signup')">New store</button>
+    </div>
+
+    <!-- Login form -->
+    <div id="login-form">
+      <label>Phone number</label>
+      <input id="l-phone" type="tel" placeholder="0300-1234567" inputmode="numeric">
+      <label>Password</label>
+      <input id="l-pass" type="password" placeholder="Enter password">
+      <div class="err" id="l-err"></div>
+      <button class="btn btn-primary" id="l-btn" onclick="doLogin()">Login</button>
+      <div class="divider">or</div>
+      <div style="text-align:center"><span class="link" onclick="showAuthTab('signup')">Create a new store account →</span></div>
+    </div>
+
+    <!-- Signup form -->
+    <div id="signup-form" style="display:none">
+      <div class="trial-badge">
+        <strong>🎁 30-day free trial</strong>
+        Full access, no card required. Start selling today.
+      </div>
+      <label>Store name</label>
+      <input id="s-name" placeholder="e.g. Ali Karyana Store">
+      <label>Phone number</label>
+      <input id="s-phone" type="tel" placeholder="0300-1234567" inputmode="numeric">
+      <label>City / area</label>
+      <input id="s-area" placeholder="e.g. Gulberg, Lahore">
+      <label>Password (min 8 characters)</label>
+      <input id="s-pass" type="password" placeholder="Create a strong password">
+      <label>Confirm password</label>
+      <input id="s-pass2" type="password" placeholder="Repeat password">
+
+      <div style="margin-top:14px;font-size:12px;font-weight:500;color:#444">Choose your plan after trial:</div>
+      <div class="plans" id="plan-sel">
+        <div class="plan sel" data-plan="basic" onclick="selectPlan('basic')">
+          <h4>Basic</h4>
+          <div class="price">Rs 500<span>/month</span></div>
+          <ul><li>POS & sales</li><li>Inventory</li><li>Udhar</li><li>Vendors</li></ul>
+        </div>
+        <div class="plan" data-plan="pro" onclick="selectPlan('pro')">
+          <h4>Pro</h4>
+          <div class="price">Rs 1,000<span>/month</span></div>
+          <ul><li>Everything in Basic</li><li>Cloud sync</li><li>Multi-device</li><li>SMS receipts</li></ul>
+        </div>
+      </div>
+      <div class="err" id="s-err"></div>
+      <button class="btn btn-primary" id="s-btn" onclick="doSignup()">Start free trial</button>
+      <div class="divider">or</div>
+      <div style="text-align:center"><span class="link" onclick="showAuthTab('login')">Already have an account → Login</span></div>
+    </div>
+  </div>
+
+  <!-- ── PAYMENT SCREEN (shown when suspended) ── -->
+  <div id="payment-section" style="display:none">
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:36px;margin-bottom:8px">🔒</div>
+      <h2 style="font-size:17px;font-weight:600;margin-bottom:6px">Subscription expired</h2>
+      <p style="font-size:13px;color:#666" id="pay-msg">Your trial has ended. Pay to continue using Karyana POS.</p>
+    </div>
+
+    <div style="font-size:12px;font-weight:500;color:#444;margin-bottom:8px">Choose your plan:</div>
+    <div class="plans" id="pay-plan-sel">
+      <div class="plan sel" data-plan="basic" onclick="selectPayPlan('basic')">
+        <h4>Basic</h4>
+        <div class="price">Rs 500<span>/month</span></div>
+        <ul><li>POS & sales</li><li>Inventory</li><li>Udhar</li></ul>
+      </div>
+      <div class="plan" data-plan="pro" onclick="selectPayPlan('pro')">
+        <h4>Pro</h4>
+        <div class="price">Rs 1,000<span>/month</span></div>
+        <ul><li>Everything Basic</li><li>Cloud sync</li><li>SMS</li></ul>
+      </div>
+    </div>
+
+    <div style="font-size:12px;font-weight:500;color:#444;margin:12px 0 8px">Pay via:</div>
+    <div class="pay-methods" id="pay-methods"></div>
+
+    <div style="font-size:12px;color:#666;margin-top:12px;line-height:1.6;background:#fef3c7;padding:10px;border-radius:8px">
+      📸 After payment, send a screenshot to <strong id="pay-contact"></strong> on WhatsApp. Your account will be activated within a few hours.
+    </div>
+
+    <button class="btn" style="background:#f0f0ee;color:#444;margin-top:10px" onclick="doLogout()">Use a different account</button>
+  </div>
+
+  <!-- ── GRACE PERIOD SCREEN ── -->
+  <div id="grace-section" style="display:none">
+    <div style="text-align:center;margin-bottom:16px;background:#fef3c7;padding:14px;border-radius:10px">
+      <div style="font-size:30px;margin-bottom:6px">⚠️</div>
+      <h3 style="font-size:15px;font-weight:600;margin-bottom:4px">Subscription expiring</h3>
+      <p style="font-size:12px;color:#666" id="grace-msg"></p>
+    </div>
+    <button class="btn btn-primary" onclick="goToApp()">Continue to app</button>
+    <button class="btn" style="background:#f0f0ee;color:#444;margin-top:8px" onclick="showPaymentScreen()">Pay now</button>
+  </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script>
+let selectedPlan    = 'basic';
+let selectedPayPlan = 'basic';
+
+/* ── Init ── */
+document.addEventListener('DOMContentLoaded', async () => {
+  initSupabase();
+  await AppDB.seedDefaults();
+
+  /* If Supabase not configured — go straight to app */
+  if (!window.SupabaseClient) {
+    goToApp(); return;
+  }
+
+  /* Check existing session */
+  const { data: { session } } = await window.SupabaseClient.auth.getSession();
+  if (session) {
+    await checkSubscriptionAndRoute(session.user.id);
+  }
+
+  /* Render payment methods from config */
+  renderPayMethods();
+});
+
+function showAuthTab(tab) {
+  document.querySelectorAll('.tab').forEach((b, i) => b.classList.toggle('active', ['login','signup'][i] === tab));
+  document.getElementById('login-form').style.display  = tab === 'login'  ? 'block' : 'none';
+  document.getElementById('signup-form').style.display = tab === 'signup' ? 'block' : 'none';
+}
+
+function selectPlan(plan) {
+  selectedPlan = plan;
+  document.querySelectorAll('#plan-sel .plan').forEach(el => el.classList.toggle('sel', el.dataset.plan === plan));
+}
+function selectPayPlan(plan) {
+  selectedPayPlan = plan;
+  document.querySelectorAll('#pay-plan-sel .plan').forEach(el => el.classList.toggle('sel', el.dataset.plan === plan));
+}
+
+function renderPayMethods() {
+  const c = window.CONFIG?.payment || {};
+  const contact = c.easypaisa || '0300-0000000';
+  document.getElementById('pay-contact').textContent = contact;
+  const methods = [
+    { icon:'💚', name:'Easypaisa', num: c.easypaisa || '—' },
+    { icon:'❤️',  name:'JazzCash',  num: c.jazzcash  || '—' },
+    { icon:'🏦',  name: c.bankName || 'Bank transfer', num: (c.bankTitle || '') + ' · ' + (c.bankAccount || '—') },
+  ];
+  document.getElementById('pay-methods').innerHTML = methods.map(m => `
+    <div class="pay-method">
+      <span class="icon">${m.icon}</span>
+      <div class="info"><div class="name">${m.name}</div><div class="num">${m.num}</div></div>
+      <button class="copy-btn" onclick="copyText('${m.num}',this)">Copy</button>
+    </div>`).join('');
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => { btn.textContent = '✓'; setTimeout(() => btn.textContent = 'Copy', 1500); });
+}
+
+async function doLogin() {
+  const phone = document.getElementById('l-phone').value.trim();
+  const pass  = document.getElementById('l-pass').value;
+  if (!phone || !pass) { showErr('l-err', 'Enter phone and password'); return; }
+  setLoading('l-btn', true);
+  try {
+    const { data, error } = await window.SupabaseClient.auth.signInWithPassword({
+      phone: normalisePhone(phone), password: pass,
+    });
+    if (error) throw error;
+    await checkSubscriptionAndRoute(data.user.id);
+  } catch (e) {
+    showErr('l-err', e.message === 'Invalid login credentials' ? 'Wrong phone or password' : e.message);
+  } finally { setLoading('l-btn', false); }
+}
+
+async function doSignup() {
+  const name  = document.getElementById('s-name').value.trim();
+  const phone = document.getElementById('s-phone').value.trim();
+  const area  = document.getElementById('s-area').value.trim();
+  const pass  = document.getElementById('s-pass').value;
+  const pass2 = document.getElementById('s-pass2').value;
+  if (!name)           { showErr('s-err', 'Enter store name'); return; }
+  if (!phone)          { showErr('s-err', 'Enter phone number'); return; }
+  if (pass.length < 8) { showErr('s-err', 'Password must be at least 8 characters'); return; }
+  if (pass !== pass2)  { showErr('s-err', 'Passwords do not match'); return; }
+  setLoading('s-btn', true);
+  try {
+    const normPhone = normalisePhone(phone);
+    /* Sign up with Supabase */
+    const { data, error } = await window.SupabaseClient.auth.signUp({
+      phone: normPhone, password: pass,
+    });
+    if (error) throw error;
+    const userId  = data.user.id;
+    const storeId = 'store_' + userId.slice(0, 8);
+    /* Create store profile */
+    const { error: se } = await window.SupabaseClient.from('stores').insert({
+      userId, storeId, storeName: name, area, phone: normPhone,
+      createdAt: new Date().toISOString(),
+    });
+    if (se) throw new Error(se.message);
+    /* Create trial subscription */
+    const trialDays = window.CONFIG?.trialDays || 30;
+    const trialEnds = new Date(Date.now() + trialDays * 86400000).toISOString().split('T')[0];
+    await window.SupabaseClient.from('subscriptions').insert({
+      storeId, plan: selectedPlan, status: 'trial', trialEnds,
+    });
+    /* Cache locally */
+    await AppDB.Settings.set('storeId',   storeId);
+    await AppDB.Settings.set('storeName', name);
+    await AppDB.Settings.set('cachedSubStatus', 'trial');
+    goToApp();
+  } catch (e) {
+    showErr('s-err', e.message);
+  } finally { setLoading('s-btn', false); }
+}
+
+async function checkSubscriptionAndRoute(userId) {
+  try {
+    const { data: profile } = await window.SupabaseClient.from('stores').select('*').eq('userId', userId).single();
+    if (!profile) { goToApp(); return; } /* New user — go setup */
+    const { data: sub } = await window.SupabaseClient.from('subscriptions').select('*').eq('storeId', profile.storeId).single();
+    /* Cache */
+    await AppDB.Settings.set('storeId',          profile.storeId);
+    await AppDB.Settings.set('storeName',        profile.storeName);
+    await AppDB.Settings.set('cachedSubStatus',  sub?.status || 'trial');
+    await AppDB.Settings.set('cachedSubChecked', new Date().toISOString());
+
+    const status = computeStatus(sub);
+    if (status === 'active' || status === 'trial') { goToApp(); return; }
+    if (status === 'expiring_soon' || status === 'grace') { showGrace(sub, status); return; }
+    showPaymentScreen(sub);
+  } catch {
+    /* Offline — use cache */
+    const cached = await AppDB.Settings.get('cachedSubStatus', 'active');
+    if (cached === 'suspended') { showPaymentScreen(null); } else { goToApp(); }
+  }
+}
+
+function computeStatus(sub) {
+  if (!sub) return 'trial';
+  if (sub.status === 'suspended') return 'suspended';
+  if (sub.status === 'trial') {
+    if (!sub.trialEnds) return 'trial';
+    const left = (new Date(sub.trialEnds) - new Date()) / 86400000;
+    return left > 0 ? 'trial' : 'suspended';
+  }
+  if (sub.status === 'active' && sub.paidUntil) {
+    const left = (new Date(sub.paidUntil) - new Date()) / 86400000;
+    if (left > 7)  return 'active';
+    if (left > 0)  return 'expiring_soon';
+    if (left > -7) return 'grace';
+    return 'suspended';
+  }
+  return sub.status || 'active';
+}
+
+function showGrace(sub, status) {
+  hide('auth-section'); hide('payment-section');
+  show('grace-section');
+  const days = sub?.paidUntil ? Math.max(0, Math.ceil((new Date(sub.paidUntil) - new Date()) / 86400000)) : 0;
+  document.getElementById('grace-msg').textContent =
+    status === 'expiring_soon'
+      ? `Your subscription expires in ${days} day${days!==1?'s':''}. Pay soon to avoid interruption.`
+      : `You are in the grace period. Pay within ${days} day${days!==1?'s':''} to continue.`;
+}
+
+function showPaymentScreen() {
+  hide('auth-section'); hide('grace-section');
+  show('payment-section');
+  renderPayMethods();
+}
+
+function goToApp()  { window.location.href = 'index.html'; }
+function showPaymentScreen2() { showPaymentScreen(); }
+
+async function doLogout() {
+  if (window.SupabaseClient) await window.SupabaseClient.auth.signOut();
+  location.reload();
+}
+
+function normalisePhone(p) {
+  p = p.replace(/[\s\-()+]/g, '');
+  if (p.startsWith('92'))  p = '+' + p;
+  else if (p.startsWith('0')) p = '+92' + p.slice(1);
+  else p = '+92' + p;
+  return p;
+}
+
+function showErr(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.style.display='block'; }
+function setLoading(id, on) { const b=document.getElementById(id); b.disabled=on; b.innerHTML=on?`<span class="spinner"></span>Processing…`:b.dataset.orig||(b.dataset.orig=b.textContent); }
+function show(id) { document.getElementById(id).style.display='block'; }
+function hide(id) { document.getElementById(id).style.display='none'; }
+</script>
+</body>
+</html>
