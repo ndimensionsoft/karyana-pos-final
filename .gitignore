@@ -6,6 +6,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Claude Code local config
+.claude/
+
 # Secrets — never commit API keys
 .env
 .env.local
